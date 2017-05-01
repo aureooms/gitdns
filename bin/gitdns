@@ -203,7 +203,7 @@ _broadcast () {
 
       hostname="$(hostname)"
       oldip="$(_do _get "$hostname")"
-      ip="$(gip)"
+      ip="$(myip public)"
 
       _info "DNS[$hostname] == $oldip"
 
