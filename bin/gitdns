@@ -1,0 +1,247 @@
+#!/usr/bin/env sh
+
+EXEPATH="$0"
+EXE="$(basename "$EXEPATH")"
+
+_usage () {
+  if [ "$1" "$2" "$3" ] ; then
+    >&2 echo "usage: $EXE $4"
+    exit 2
+  fi
+}
+
+_usage "$#" -lt 1 "<command> <...args>"
+
+CMD="$1" && shift
+
+CONFIGDIR="$HOME/.config/gitdns"
+CONFIG="$CONFIGDIR/config"
+DNS="$CONFIGDIR/dns"
+DNSGITDIR="$DNS/.git"
+CNAME="CNAME"
+
+_dns () {
+  gitkv "$DNS" "$@"
+}
+
+# check config files exists
+if [ ! -e "$CONFIG" ] ; then
+  >&2 echo "Could not find configuration file $CONFIG"
+  exit 1
+fi
+
+# set up dns repo
+if [ ! -e "$DNSGITDIR" ] ; then
+
+  remote="$(< "$CONFIG" jq -r .remote)"
+
+  if [ "$?" -ne 0 ] ; then
+    >&2 echo "Failed to read remote from $CONFIG"
+    exit 1
+  fi
+
+  mkdir -p "$DNS"
+
+  _dns init "$remote"
+
+fi
+
+_route () {
+
+  case "$CMD" in
+      info)
+	  _info "$@"
+	  ;;
+      put)
+	  _put "$@"
+	  ;;
+      get)
+	  _get "$@"
+	  ;;
+      pull)
+	  _pull "$@"
+	  ;;
+      push)
+	  _push "$@"
+	  ;;
+      sync)
+	  _sync "$@"
+	  ;;
+      listen)
+	  _listen "$@"
+	  ;;
+      broadcast)
+	  _broadcast "$@"
+	  ;;
+      *)
+	  _unknown_command "$CMD"
+	  ;;
+  esac
+}
+
+_info () {
+
+  _usage "$#" -ne 0 "info"
+
+  echo "EXE       = $EXE"
+  echo "EXEPATH   = $EXEPATH"
+  echo "CONFIGDIR = $CONFIGDIR"
+  echo "CONFIG    = $CONFIG"
+  echo "DNS       = $DNS"
+  echo "DNSGITDIR = $DNSGITDIR"
+  echo "CNAME     = $CNAME"
+
+  exit 0
+
+}
+
+_put () {
+
+  _usage "$#" -ne 2 "put <hostname> <ip>"
+
+  _dns put "$CNAME/$1" "$2"
+
+  exit "$?"
+
+}
+
+_get () {
+
+  _usage "$#" -ne 1 "get <hostname>"
+
+  _dns get "$CNAME/$1"
+
+  exit "$?"
+
+}
+
+_pull () {
+
+  _usage "$#" -ne 0 "pull"
+
+  _dns pull
+
+  exit "$?"
+
+}
+
+_push () {
+
+  _usage "$#" -ne 0 "push"
+
+  _dns push
+
+  exit "$?"
+
+}
+
+_sync () {
+
+  _usage "$#" -ne 0 "sync"
+
+  _dns sync
+
+  exit "$?"
+
+}
+
+_log () {
+  lvl="$1" && shift
+  >&2 echo "[$lvl]" "$@"
+}
+
+_sleep () {
+
+  _log info "sleep $1"
+  sleep "$1"
+
+}
+
+_do () {
+
+  _log info "$@"
+  "$@"
+  rc="$?"
+
+  if [ "$rc" -eq 0 ] ; then
+    _log succ "$@"
+  else
+    _log fail "$@"
+  fi
+
+  return "$rc"
+
+}
+
+_listen () {
+
+  _usage "$#" -ne 0 "listen"
+
+  while true; do
+
+    if _do _pull ; then
+
+      _sleep 900;
+
+    else
+
+      _sleep 300;
+
+    fi
+
+  done
+
+}
+
+_broadcast () {
+
+  _usage "$#" -ne 0 "broadcast"
+
+  while true; do
+
+    if _do _pull ; then
+
+      hostname="$(hostname)"
+      oldip="$(_do _get "$hostname")"
+      ip="$(gip)"
+
+      _info "DNS[$hostname] == $oldip"
+
+      if [ "$ip" = '' ] ; then
+	_log fail "could not resolve global ip address"
+	_sleep 300
+	continue
+      fi
+
+      if [ "$ip" != "$oldip" ] ; then
+
+	_do _put "$hostname" "$ip"
+
+	while ! _do _push ; do
+
+	  _sleep 300
+
+	  _do _pull
+
+	done
+
+      fi
+
+	_sleep 900;
+
+    else
+
+      _sleep 300;
+
+    fi
+
+  done
+
+}
+
+_unknown_command ( ) {
+  >&2 echo "Unknown command: $1"
+  exit 3
+}
+
+_route "$@"
