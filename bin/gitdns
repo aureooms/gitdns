@@ -50,22 +50,22 @@ _route () {
 
   case "$CMD" in
       info)
-	  _info "$@"
+	  _info "$@"; exit "$?"
 	  ;;
       put)
-	  _put "$@"
+	  _put "$@"; exit "$?"
 	  ;;
       get)
-	  _get "$@"
+	  _get "$@"; exit "$?"
 	  ;;
       pull)
-	  _pull "$@"
+	  _pull "$@"; exit "$?"
 	  ;;
       push)
-	  _push "$@"
+	  _push "$@"; exit "$?"
 	  ;;
       sync)
-	  _sync "$@"
+	  _sync "$@"; exit "$?"
 	  ;;
       listen)
 	  _listen "$@"
@@ -101,8 +101,6 @@ _put () {
 
   _dns put "$CNAME/$1" "$2"
 
-  exit "$?"
-
 }
 
 _get () {
@@ -110,8 +108,6 @@ _get () {
   _usage "$#" -ne 1 "get <hostname>"
 
   _dns get "$CNAME/$1"
-
-  exit "$?"
 
 }
 
@@ -121,8 +117,6 @@ _pull () {
 
   _dns pull
 
-  exit "$?"
-
 }
 
 _push () {
@@ -131,8 +125,6 @@ _push () {
 
   _dns push
 
-  exit "$?"
-
 }
 
 _sync () {
@@ -140,8 +132,6 @@ _sync () {
   _usage "$#" -ne 0 "sync"
 
   _dns sync
-
-  exit "$?"
 
 }
 
