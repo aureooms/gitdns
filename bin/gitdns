@@ -191,11 +191,11 @@ _broadcast () {
 
     if _do _pull ; then
 
-      hostname="$(hostname)"
+      hostname="$(_do hostname)"
       oldip="$(_do _get "$hostname")"
-      ip="$(myip public)"
+      ip="$(_do myip public)"
 
-      _info "DNS[$hostname] == $oldip"
+      _log info "DNS[$hostname] == $oldip"
 
       if [ "$ip" = '' ] ; then
 	_log fail "could not resolve global ip address"
@@ -217,7 +217,7 @@ _broadcast () {
 
       fi
 
-	_sleep 900;
+      _sleep 900;
 
     else
 
